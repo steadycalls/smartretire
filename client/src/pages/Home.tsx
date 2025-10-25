@@ -1,9 +1,14 @@
+import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calculator, TrendingUp, Shield, Zap, CheckCircle, ArrowRight, DollarSign, Calendar, PieChart } from "lucide-react";
 
 export default function Home() {
+  // The userAuth hooks provides authentication state
+  // To implement login/logout functionality, simply call logout() or redirect to getLoginUrl()
+  let { user, loading, error, isAuthenticated, logout } = useAuth();
+
   const [, setLocation] = useLocation();
 
   const features = [

@@ -1,0 +1,40 @@
+CREATE TABLE `retirementScenarios` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`userId` int NOT NULL,
+	`name` varchar(255) NOT NULL,
+	`currentAge` int NOT NULL,
+	`retirementAge` int NOT NULL,
+	`lifeExpectancy` int NOT NULL,
+	`currentSavings` int NOT NULL,
+	`monthlyExpenses` int NOT NULL,
+	`socialSecurityAge` int NOT NULL,
+	`estimatedSocialSecurity` int NOT NULL,
+	`hasSpouse` int NOT NULL DEFAULT 0,
+	`spouseAge` int,
+	`spouseRetirementAge` int,
+	`spouseSocialSecurityAge` int,
+	`spouseSocialSecurity` int,
+	`readinessScore` int,
+	`projectedShortfall` int,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `retirementScenarios_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `rothConversions` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`userId` int NOT NULL,
+	`scenarioId` int,
+	`currentAge` int NOT NULL,
+	`traditionalIraBalance` int NOT NULL,
+	`currentTaxBracket` int NOT NULL,
+	`retirementTaxBracket` int NOT NULL,
+	`conversionAmount` int NOT NULL,
+	`conversionYear` int NOT NULL,
+	`taxesPaidNow` int,
+	`taxesSavedLater` int,
+	`netBenefit` int,
+	`recommendation` text,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `rothConversions_id` PRIMARY KEY(`id`)
+);

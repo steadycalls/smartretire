@@ -7,14 +7,19 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Calculator from "./pages/Calculator";
 import Results from "./pages/Results";
+import Dashboard from "./pages/Dashboard";
+import RothCalculator from "./pages/RothCalculator";
 
 function Router() {
+  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
+      <Route path="/" component={Home} />
       <Route path="/calculator" component={Calculator} />
       <Route path="/results" component={Results} />
-      <Route path={"/404"} component={NotFound} />
+      <Route path="/dashboard" component={Dashboard} />
+      <Route path="/roth-calculator" component={RothCalculator} />
+      <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>

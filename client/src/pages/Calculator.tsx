@@ -1,34 +1,91 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { ArrowLeft, Calculator as CalcIcon } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { ArrowLeft, Calculator as CalcIcon, Save, Users } from "lucide-react";
+import { toast } from "sonner";
+import { getLoginUrl } from "@/const";
 
 export default function Calculator() {
   const [, setLocation] = useLocation();
+  const { isAuthenticated } = useAuth();
+  
+  // Personal Info
+  const [scenarioName, setScenarioName] = useState("My Retirement Plan");
   const [currentAge, setCurrentAge] = useState(62);
   const [retirementAge, setRetirementAge] = useState(67);
+  const [lifeExpectancy, setLifeExpectancy] = useState(90);
   const [currentSavings, setCurrentSavings] = useState(500000);
   const [monthlyExpenses, setMonthlyExpenses] = useState(5000);
   const [socialSecurityAge, setSocialSecurityAge] = useState(67);
   const [estimatedSSBenefit, setEstimatedSSBenefit] = useState(2500);
+  
+  // Spouse Info
+  const [hasSpouse, setHasSpouse] = useState(false);
+  const [spouseAge, setSpouseAge] = useState(60);
+  const [spouseRetirementAge, setSpouseRetirementAge] = useState(67);
+  const [spouseSocialSecurityAge, setSpouseSocialSecurityAge] = useState(67);
+  const [spouseSocialSecurity, setSpouseSocialSecurity] = useState(2000);
+
+  const createScenario = trpc.scenarios.create.useMutation({
+    onSuccess: (data) => {
+      toast.success("Scenario saved successfully!");
+      handleCalculate();
+    },
+    onError: (error) => {
+      toast.error("Failed to save scenario: " + error.message);
+    }
+  });
 
   const handleCalculate = () => {
     // Store data in sessionStorage for Results page
     const calculationData = {
       currentAge,
       retirementAge,
+      lifeExpectancy,
       currentSavings,
       monthlyExpenses,
       socialSecurityAge,
       estimatedSSBenefit,
+      hasSpouse,
+      spouseAge: hasSpouse ? spouseAge : undefined,
+      spouseRetirementAge: hasSpouse ? spouseRetirementAge : undefined,
+      spouseSocialSecurityAge: hasSpouse ? spouseSocialSecurityAge : undefined,
+      spouseSocialSecurity: hasSpouse ? spouseSocialSecurity : undefined,
       timestamp: new Date().toISOString()
     };
     sessionStorage.setItem('retirementCalc', JSON.stringify(calculationData));
     setLocation('/results');
+  };
+
+  const handleSaveAndCalculate = () => {
+    if (!isAuthenticated) {
+      toast.error("Please login to save scenarios");
+      window.location.href = getLoginUrl();
+      return;
+    }
+
+    createScenario.mutate({
+      name: scenarioName,
+      currentAge,
+      retirementAge,
+      lifeExpectancy,
+      currentSavings,
+      monthlyExpenses,
+      socialSecurityAge,
+      estimatedSocialSecurity: estimatedSSBenefit,
+      hasSpouse: hasSpouse ? 1 : 0,
+      spouseAge: hasSpouse ? spouseAge : undefined,
+      spouseRetirementAge: hasSpouse ? spouseRetirementAge : undefined,
+      spouseSocialSecurityAge: hasSpouse ? spouseSocialSecurityAge : undefined,
+      spouseSocialSecurity: hasSpouse ? spouseSocialSecurity : undefined,
+    });
   };
 
   return (
@@ -45,7 +102,13 @@ export default function Calculator() {
             Back to Home
           </Button>
           <h1 className="text-xl font-semibold text-gray-900">SmartRetire Calculator</h1>
-          <div className="w-24" /> {/* Spacer for alignment */}
+          <Button 
+            variant="ghost" 
+            onClick={() => setLocation('/dashboard')}
+            className="gap-2"
+          >
+            My Scenarios
+          </Button>
         </div>
       </header>
 
@@ -61,7 +124,23 @@ export default function Calculator() {
           </p>
         </div>
 
-        <Card className="shadow-lg">
+        <Card className="shadow-lg mb-6">
+          <CardHeader>
+            <CardTitle>Scenario Name</CardTitle>
+            <CardDescription>
+              Give this scenario a memorable name for easy reference
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Input
+              value={scenarioName}
+              onChange={(e) => setScenarioName(e.target.value)}
+              placeholder="e.g., Retire at 65, Early Retirement Plan"
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg mb-6">
           <CardHeader>
             <CardTitle>Your Retirement Profile</CardTitle>
             <CardDescription>
@@ -98,6 +177,19 @@ export default function Calculator() {
                   className="w-full"
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="lifeExpectancy">Life Expectancy: {lifeExpectancy}</Label>
+                <Slider
+                  id="lifeExpectancy"
+                  min={75}
+                  max={100}
+                  step={1}
+                  value={[lifeExpectancy]}
+                  onValueChange={(value) => setLifeExpectancy(value[0])}
+                  className="w-full"
+                />
+              </div>
             </div>
 
             {/* Financial Information */}
@@ -105,33 +197,29 @@ export default function Calculator() {
               <h3 className="text-lg font-semibold text-gray-900">Financial Details</h3>
               
               <div className="space-y-2">
-                <Label htmlFor="currentSavings">Total Retirement Savings ($)</Label>
-                <Input
+                <Label htmlFor="currentSavings">Current Retirement Savings: ${currentSavings.toLocaleString()}</Label>
+                <Slider
                   id="currentSavings"
-                  type="number"
-                  value={currentSavings}
-                  onChange={(e) => setCurrentSavings(Number(e.target.value))}
-                  placeholder="500000"
-                  className="text-lg"
+                  min={0}
+                  max={2000000}
+                  step={10000}
+                  value={[currentSavings]}
+                  onValueChange={(value) => setCurrentSavings(value[0])}
+                  className="w-full"
                 />
-                <p className="text-sm text-gray-500">
-                  Include all retirement accounts (401k, IRA, Roth IRA, etc.)
-                </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="monthlyExpenses">Expected Monthly Expenses in Retirement ($)</Label>
-                <Input
+                <Label htmlFor="monthlyExpenses">Expected Monthly Expenses in Retirement: ${monthlyExpenses.toLocaleString()}</Label>
+                <Slider
                   id="monthlyExpenses"
-                  type="number"
-                  value={monthlyExpenses}
-                  onChange={(e) => setMonthlyExpenses(Number(e.target.value))}
-                  placeholder="5000"
-                  className="text-lg"
+                  min={2000}
+                  max={15000}
+                  step={500}
+                  value={[monthlyExpenses]}
+                  onValueChange={(value) => setMonthlyExpenses(value[0])}
+                  className="w-full"
                 />
-                <p className="text-sm text-gray-500">
-                  Estimate your monthly living expenses during retirement
-                </p>
               </div>
             </div>
 
@@ -140,7 +228,7 @@ export default function Calculator() {
               <h3 className="text-lg font-semibold text-gray-900">Social Security</h3>
               
               <div className="space-y-2">
-                <Label htmlFor="socialSecurityAge">Planned Social Security Claiming Age: {socialSecurityAge}</Label>
+                <Label htmlFor="socialSecurityAge">Age to Claim Social Security: {socialSecurityAge}</Label>
                 <Slider
                   id="socialSecurityAge"
                   min={62}
@@ -150,52 +238,128 @@ export default function Calculator() {
                   onValueChange={(value) => setSocialSecurityAge(value[0])}
                   className="w-full"
                 />
-                <p className="text-sm text-gray-500">
-                  Age 62 (earliest) to 70 (maximum benefit)
-                </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="estimatedSSBenefit">Estimated Monthly Social Security Benefit at Age 67 ($)</Label>
-                <Input
+                <Label htmlFor="estimatedSSBenefit">Estimated Monthly Social Security Benefit: ${estimatedSSBenefit.toLocaleString()}</Label>
+                <Slider
                   id="estimatedSSBenefit"
-                  type="number"
-                  value={estimatedSSBenefit}
-                  onChange={(e) => setEstimatedSSBenefit(Number(e.target.value))}
-                  placeholder="2500"
-                  className="text-lg"
+                  min={1000}
+                  max={4500}
+                  step={100}
+                  value={[estimatedSSBenefit]}
+                  onValueChange={(value) => setEstimatedSSBenefit(value[0])}
+                  className="w-full"
                 />
-                <p className="text-sm text-gray-500">
-                  Check your benefit estimate at <a href="https://www.ssa.gov" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">SSA.gov</a>
-                </p>
               </div>
-            </div>
-
-            {/* Calculate Button */}
-            <div className="pt-6">
-              <Button 
-                onClick={handleCalculate}
-                className="w-full h-12 text-lg bg-indigo-600 hover:bg-indigo-700"
-                disabled={currentAge >= retirementAge}
-              >
-                Calculate My Retirement Strategy
-              </Button>
-              {currentAge >= retirementAge && (
-                <p className="text-sm text-red-600 mt-2 text-center">
-                  Retirement age must be greater than current age
-                </p>
-              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Disclaimer */}
-        <div className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-          <p className="text-sm text-amber-900">
-            <strong>Disclaimer:</strong> This calculator provides educational estimates only and should not be considered financial advice. 
-            Consult with a qualified financial advisor for personalized retirement planning.
-          </p>
+        {/* Spouse/Partner Section */}
+        <Card className="shadow-lg mb-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Spouse/Partner Planning
+                </CardTitle>
+                <CardDescription>
+                  Include your spouse or partner for joint retirement planning
+                </CardDescription>
+              </div>
+              <Switch
+                checked={hasSpouse}
+                onCheckedChange={setHasSpouse}
+              />
+            </div>
+          </CardHeader>
+          {hasSpouse && (
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="spouseAge">Spouse Age: {spouseAge}</Label>
+                <Slider
+                  id="spouseAge"
+                  min={50}
+                  max={75}
+                  step={1}
+                  value={[spouseAge]}
+                  onValueChange={(value) => setSpouseAge(value[0])}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="spouseRetirementAge">Spouse Retirement Age: {spouseRetirementAge}</Label>
+                <Slider
+                  id="spouseRetirementAge"
+                  min={55}
+                  max={75}
+                  step={1}
+                  value={[spouseRetirementAge]}
+                  onValueChange={(value) => setSpouseRetirementAge(value[0])}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="spouseSocialSecurityAge">Spouse Social Security Age: {spouseSocialSecurityAge}</Label>
+                <Slider
+                  id="spouseSocialSecurityAge"
+                  min={62}
+                  max={70}
+                  step={1}
+                  value={[spouseSocialSecurityAge]}
+                  onValueChange={(value) => setSpouseSocialSecurityAge(value[0])}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="spouseSocialSecurity">Spouse Monthly Social Security: ${spouseSocialSecurity.toLocaleString()}</Label>
+                <Slider
+                  id="spouseSocialSecurity"
+                  min={1000}
+                  max={4500}
+                  step={100}
+                  value={[spouseSocialSecurity]}
+                  onValueChange={(value) => setSpouseSocialSecurity(value[0])}
+                  className="w-full"
+                />
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Button
+            size="lg"
+            className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+            onClick={handleCalculate}
+          >
+            Calculate Results
+          </Button>
+          {isAuthenticated && (
+            <Button
+              size="lg"
+              variant="outline"
+              className="flex-1 border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+              onClick={handleSaveAndCalculate}
+              disabled={createScenario.isPending}
+            >
+              <Save className="mr-2 h-5 w-5" />
+              {createScenario.isPending ? "Saving..." : "Save & Calculate"}
+            </Button>
+          )}
         </div>
+
+        {!isAuthenticated && (
+          <p className="text-center text-sm text-gray-600 mt-4">
+            <a href={getLoginUrl()} className="text-indigo-600 hover:underline">Login</a> to save and compare multiple scenarios
+          </p>
+        )}
       </main>
     </div>
   );
